@@ -3,7 +3,7 @@
   <head>
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
     />
     <title>Robotics Challenge Invitation</title>
     <style>
@@ -14,21 +14,22 @@
         background-color: #f0f0f0;
         font-family: Arial, sans-serif;
         margin: 0;
-        overflow: hidden;
+        overflow: auto;
       }
       .controls {
         width: 100%;
-        max-width: 600px;
+        max-width: none;
         flex-wrap: wrap;
         justify-content: center;
         gap: 10px;
-        margin: 20px;
-        padding: 10px;
+        margin: 10px 0;
+        padding: 5px;
         background-color: #fff;
         border-radius: 5px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
       }
       .controls label {
         font-weight: bold;
@@ -37,17 +38,19 @@
       .controls select {
         padding: 5px;
         border-radius: 5px;
-        margin-right: 10px;
+        margin: 5px 0;
         background-color: #007bff;
         color: #fff;
         border: none;
+        width: 100%;
       }
       .controls button {
         padding: 10px 15px;
-        margin-right: 10px;
+        margin: 5px 0;
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        width: 100%;
       }
       .start-btn {
         background-color: #28a745;
@@ -75,22 +78,16 @@
       canvas {
         width: 100%;
         height: auto;
-        max-width: 800px;
+        max-width: none;
         object-fit: contain;
         border: 2px solid #333;
         margin: 20px;
         background-color: #fff;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
       }
-      @media (max-width: 768px) {
-        .controls button,
-        .controls select {
-          width: 100%;
-          margin: 5px 0;
-        }
-        .level-info {
-          width: 90%;
-          text-align: center;
+      @media (min-width: 768px) {
+        body {
+          display: none;
         }
       }
     </style>
@@ -228,19 +225,17 @@
       }
 
       function resetChallenge() {
-        // Remove fixed base dimensions
-        // Calculate the container size
-        const containerWidth = canvas.parentElement.clientWidth;
-        const containerHeight = canvas.parentElement.clientHeight;
+        // Set canvas size to fill the viewport width
+        const containerWidth = window.innerWidth;
+        const containerHeight = window.innerHeight * 0.6; // Use 60% of the viewport height
 
-        // Set canvas size to match its displayed size
         canvas.width = containerWidth;
         canvas.height = containerHeight;
 
-        // Calculate scale factor based on actual canvas size
+        // Adjust scale factor based on canvas width
         scaleFactor = canvas.width / 800; // Base width is 800
 
-        // Initialize robot with scaled values
+        // Initialize robot with scaled values for mobile
         robot = {
           x: 50 * scaleFactor,
           y: canvas.height / 2,
@@ -485,10 +480,6 @@
         resetChallenge();
         updateLevelInfo();
       };
-
-      window.addEventListener("resize", () => {
-        resetChallenge();
-      });
     </script>
   </body>
 </html>
