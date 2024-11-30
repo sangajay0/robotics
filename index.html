@@ -17,7 +17,7 @@
         overflow: hidden;
       }
       .controls {
-        width: 90%;
+        width: 100%;
         max-width: 600px;
         flex-wrap: wrap;
         justify-content: center;
@@ -73,10 +73,9 @@
         transition: all 0.1s;
       }
       canvas {
-        width: 800px;
-        height: 600px;
-        max-width: 90vw;
-        max-height: 80vh;
+        width: 100%;
+        height: auto;
+        max-width: 800px;
         object-fit: contain;
         border: 2px solid #333;
         margin: 20px;
@@ -229,33 +228,27 @@
       }
 
       function resetChallenge() {
-        // Set fixed base dimensions
-        const BASE_WIDTH = 800;
-        const BASE_HEIGHT = 600;
+        // Remove fixed base dimensions
+        // Calculate the container size
+        const containerWidth = canvas.parentElement.clientWidth;
+        const containerHeight = canvas.parentElement.clientHeight;
 
-        // Calculate scale factor based on container size
-        const containerWidth = Math.min(window.innerWidth * 0.9, BASE_WIDTH);
-        const containerHeight = Math.min(window.innerHeight * 0.8, BASE_HEIGHT);
+        // Set canvas size to match its displayed size
+        canvas.width = containerWidth;
+        canvas.height = containerHeight;
 
-        // Set canvas size to base dimensions
-        canvas.width = BASE_WIDTH;
-        canvas.height = BASE_HEIGHT;
-
-        // Calculate uniform scale factor
-        scaleFactor = Math.min(
-          containerWidth / BASE_WIDTH,
-          containerHeight / BASE_HEIGHT
-        );
+        // Calculate scale factor based on actual canvas size
+        scaleFactor = canvas.width / 800; // Base width is 800
 
         // Initialize robot with scaled values
         robot = {
-          x: 50,
+          x: 50 * scaleFactor,
           y: canvas.height / 2,
           angle: 0,
-          size: 10, // Fixed size regardless of screen
+          size: 10 * scaleFactor,
         };
 
-        autoSpeed = 3; // Fixed speed regardless of screen
+        autoSpeed = 3 * scaleFactor;
 
         completedPoints.clear();
         progress = 0;
