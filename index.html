@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Robotics Challenge Invitation</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f0f0f0;
+        font-family: Arial, sans-serif;
+      }
+      .controls {
+        margin: 20px;
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .level-info {
+        background: #333;
+        color: #fff;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px;
+      }
+      .robot {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: #ff0000;
+        border-radius: 50%;
+        transition: all 0.1s;
+      }
+      canvas {
+        border: 2px solid #333;
+        margin: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <label>Challenge: </label>
+      <select id="levelSelect" onchange="changeLevel()">
+        <option value="lineFollower">Level 1: Line Follower</option>
+        <option value="wallAvoider">Level 2: Wall Avoider</option>
+      </select>
+      <button onclick="startChallenge()">Start Challenge</button>
+      <button onclick="resetRobot()">Reset Robot</button>
+    </div>
+    <div class="level-info" id="levelInfo">Select a challenge to begin!</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      let currentLevel = "lineFollower";
+      let robot = { x: 50, y: 50, angle: 0 };
+      let running = false;
+      let obstacles = [];
+      let path = [];
+      let completedPoints = new Set();
+      let progress = 0;
+      let animationId = null;
+      let targetPoint = 0;
+      let autoSpeed = 3;
+      let circuitCount = 0;
+      let lastWallAvoidanceDecision = null;
+      let stuckTimer = 0;
+      let lastPosition = { x: 0, y: 0 };
+      let previousPaths = [];
+      let obstacleMemory = new Map();
+      let bestPathFound = null;
+      let stuckCount = 0;
+      let lastPositions = [];
+      let forceDirectionChange = false;
+
+      function changeLevel() {
+        currentLevel = document.getElementById("levelSelect").value;
+        resetChallenge();
+        updateLevelInfo();
+      }
+
+      function updateLevelInfo() {
+        const info = {
+          lineFollower:
+            "Press on start challenge for Line Follower demo Created by Genai!(Github copilot)                ",
+          wallAvoider:
+            "Press on start challenge for Wall Avoider demo Created by Genai !(Github copilot)",
+        };
+        document.getElementById("levelInfo").textContent = info[currentLevel];
+      }
+
+      function generateLineFollowerPath() {
+        path = [];
+        const margin = 50;
+        const width = canvas.width - 2 * margin;
+        const height = canvas.height - 2 * margin;
+
+        // Create a complete circuit path
+        let x = margin;
+        let y = canvas.height / 2;
+
+        // First curve (left to right)
+        for (let i = 0; i < width; i += 2) {
+          y = canvas.height / 2 + Math.sin(i / 100) * 50;
+          path.push({ x: x + i, y });
+        }
+
+        // Connect to second curve
+        for (let i = 0; i < 50; i += 2) {
+          path.push({ x: x + width - i, y: y + i });
+        }
+
+        // Second curve (right to left)
+        for (let i = width; i > 0; i -= 2) {
+          y = canvas.height / 2 - 100 + Math.cos(i / 80) * 30;
+          path.push({ x: x + i, y });
+        }
+
+        // Complete the circuit
+        for (let i = 0; i < 50; i += 2) {
+          path.push({ x: x + i, y: y - i });
+        }
+      }
+
+      function generateWallAvoiderLevel() {
+        obstacles = [];
+        // Create a challenging obstacle course
+        // Add walls that form a maze-like pattern
+        const obstaclePatterns = [
+          { x: 200, y: 100, w: 30, h: 200 },
+          { x: 400, y: 300, w: 30, h: 200 },
+          { x: 600, y: 100, w: 30, h: 200 },
+          { x: 300, y: 200, w: 200, h: 30 },
+          { x: 500, y: 400, w: 200, h: 30 },
+        ];
+
+        obstaclePatterns.forEach((pattern) => {
+          obstacles.push({
+            x: pattern.x,
+            y: pattern.y,
+            width: pattern.w,
+            height: pattern.h,
+          });
+        });
+      }
+
+      function drawLineFollower() {
+        ctx.beginPath();
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 5;
+        path.forEach((point, i) => {
+          if (i === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        });
+        ctx.stroke();
+      }
+
+      function drawWallAvoider() {
+        ctx.fillStyle = "#333";
+        obstacles.forEach((obstacle) => {
+          ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        });
+      }
+
+      function drawRobot() {
+        ctx.save();
+        ctx.translate(robot.x, robot.y);
+        ctx.rotate(robot.angle);
+
+        // Change robot color based on progress
+        const progressColor = `rgb(${255 - progress * 255}, ${
+          progress * 255
+        }, 0)`;
+        ctx.fillStyle = progressColor;
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Add progress indicator
+        ctx.fillStyle = "#fff";
+        ctx.font = "10px Arial";
+        ctx.fillText(`${Math.floor(progress * 100)}%`, -10, 4);
+
+        ctx.fillStyle = "#000";
+        ctx.fillRect(5, -2, 5, 4);
+        ctx.restore();
+      }
+
+      function resetChallenge() {
+        robot = { x: 50, y: canvas.height / 2, angle: 0 };
+        canvas.width = window.innerWidth - 100;
+        canvas.height = window.innerHeight - 200;
+        completedPoints.clear();
+        progress = 0;
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        }
+        targetPoint = 0;
+
+        if (currentLevel === "lineFollower") {
+          generateLineFollowerPath();
+        } else {
+          generateWallAvoiderLevel();
+        }
+        draw();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (currentLevel === "lineFollower") {
+          drawLineFollower();
+        } else {
+          drawWallAvoider();
+        }
+        drawRobot();
+      }
+
+      function moveRobot() {
+        if (!running) return;
+
+        if (currentLevel === "lineFollower") {
+          const target = path[targetPoint];
+          if (!target) {
+            targetPoint = 0;
+            circuitCount++;
+            return;
+          }
+
+          const dx = target.x - robot.x;
+          const dy = target.y - robot.y;
+          const targetAngle = Math.atan2(dy, dx);
+          const angleDiff = targetAngle - robot.angle;
+          robot.angle +=
+            Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.1);
+          robot.x += Math.cos(robot.angle) * autoSpeed;
+          robot.y += Math.sin(robot.angle) * autoSpeed;
+
+          if (Math.hypot(dx, dy) < 15) {
+            targetPoint += 5;
+            if (targetPoint >= path.length - 10) {
+              targetPoint = 0;
+              circuitCount++;
+            }
+          }
+        } else {
+          // Simplified but more reliable wall avoidance
+          let moveX = autoSpeed;
+          let moveY = 0;
+
+          // Store last 10 positions to detect being stuck
+          lastPositions.push({ x: robot.x, y: robot.y });
+          if (lastPositions.length > 10) {
+            lastPositions.shift();
+
+            // Check if robot is stuck by analyzing movement
+            const totalMovement = lastPositions.reduce((acc, pos, i) => {
+              if (i === 0) return 0;
+              return (
+                acc +
+                Math.hypot(
+                  pos.x - lastPositions[i - 1].x,
+                  pos.y - lastPositions[i - 1].y
+                )
+              );
+            }, 0);
+
+            if (totalMovement < 5) {
+              stuckCount++;
+              if (stuckCount > 30) {
+                forceDirectionChange = true;
+                stuckCount = 0;
+              }
+            } else {
+              stuckCount = 0;
+            }
+          }
+
+          // Find nearest obstacle
+          let nearestDist = Infinity;
+          let avoidanceDirection = 0;
+
+          obstacles.forEach((obs) => {
+            const obsCenter = {
+              x: obs.x + obs.width / 2,
+              y: obs.y + obs.height / 2,
+            };
+
+            const dist = Math.hypot(
+              robot.x - obsCenter.x,
+              robot.y - obsCenter.y
+            );
+            if (dist < nearestDist && obsCenter.x > robot.x) {
+              nearestDist = dist;
+              avoidanceDirection = robot.y > obsCenter.y ? -1 : 1;
+            }
+          });
+
+          // Apply movement with improved obstacle avoidance
+          if (nearestDist < 100 || forceDirectionChange) {
+            // Strong avoidance when close to obstacles
+            moveY =
+              autoSpeed *
+              (forceDirectionChange ? -avoidanceDirection : avoidanceDirection);
+            moveX = autoSpeed * 0.5;
+
+            if (forceDirectionChange && Math.random() < 0.1) {
+              forceDirectionChange = false;
+            }
+          }
+
+          // Apply movement with collision checks
+          const newX = robot.x + moveX;
+          const newY = robot.y + moveY;
+
+          if (!checkCollision(newX, newY)) {
+            robot.x = newX;
+            robot.y = newY;
+          } else {
+            // Try alternative movements when blocked
+            const alternatives = [
+              { x: 0, y: -autoSpeed },
+              { x: 0, y: autoSpeed },
+              { x: -autoSpeed * 0.5, y: moveY },
+            ];
+
+            for (const alt of alternatives) {
+              if (!checkCollision(robot.x + alt.x, robot.y + alt.y)) {
+                robot.x += alt.x;
+                robot.y += alt.y;
+                break;
+              }
+            }
+          }
+
+          // Keep robot within canvas bounds
+          robot.y = Math.max(20, Math.min(canvas.height - 20, robot.y));
+
+          // Update robot angle
+          const targetAngle = Math.atan2(moveY, moveX);
+          const angleDiff =
+            ((targetAngle - robot.angle + Math.PI * 3) % (Math.PI * 2)) -
+            Math.PI;
+          robot.angle += angleDiff * 0.1;
+        }
+
+        draw();
+        checkSuccess();
+        animationId = requestAnimationFrame(moveRobot);
+      }
+
+      // Update collision detection to be more precise
+      function checkCollision(x, y) {
+        const robotRadius = 12; // Slightly larger than visual size for safety
+        return obstacles.some((obs) => {
+          // Expand obstacle bounds by robot radius
+          const expandedObs = {
+            x: obs.x - robotRadius,
+            y: obs.y - robotRadius,
+            width: obs.width + robotRadius * 2,
+            height: obs.height + robotRadius * 2,
+          };
+
+          return (
+            x > expandedObs.x &&
+            x < expandedObs.x + expandedObs.width &&
+            y > expandedObs.y &&
+            y < expandedObs.y + expandedObs.height
+          );
+        });
+      }
+
+      function checkSuccess() {
+        if (currentLevel === "lineFollower") {
+          const currentPoint = path.find(
+            (point) => Math.hypot(point.x - robot.x, point.y - robot.y) < 15
+          );
+
+          if (!currentPoint) {
+            resetChallenge();
+            return;
+          }
+
+          completedPoints.add(
+            `${Math.floor(currentPoint.x)},${Math.floor(currentPoint.y)}`
+          );
+
+          // Update progress calculation for 700%
+          progress = completedPoints.size / (path.length / 10) + circuitCount;
+          progress = Math.min(progress, 7); // Cap at 700%
+
+          if (progress >= 7) {
+            alert(
+              "Line Following Challenge Complete! (700% coverage achieved)"
+            );
+            currentLevel = "wallAvoider";
+            document.getElementById("levelSelect").value = "wallAvoider";
+            resetChallenge();
+          }
+        } else {
+          // Wall avoider progress based on distance traveled
+          progress = Math.min(robot.x / (canvas.width - 100), 1);
+
+          if (robot.x > canvas.width - 50) {
+            alert("Wall Avoider Challenge Complete!");
+            resetChallenge();
+          }
+        }
+        draw();
+      }
+
+      function startChallenge() {
+        running = true;
+        completedPoints.clear();
+        progress = 0;
+        targetPoint = 0;
+        circuitCount = 0; // Reset circuit count
+        resetChallenge();
+        if (animationId) cancelAnimationFrame(animationId);
+        moveRobot();
+      }
+
+      window.onload = () => {
+        resetChallenge();
+        updateLevelInfo();
+      };
+    </script>
+  </body>
+</html>
