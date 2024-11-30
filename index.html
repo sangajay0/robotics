@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Robotics workshop Invitation</title>
+    <title>Robotics Challenge Invitation</title>
     <style>
       body {
         display: flex;
@@ -9,6 +9,7 @@
         align-items: center;
         background-color: #f0f0f0;
         font-family: Arial, sans-serif;
+        touch-action: none; /* Prevent default touch behaviors */
       }
       .controls {
         margin: 20px;
@@ -35,6 +36,21 @@
       canvas {
         border: 2px solid #333;
         margin: 20px;
+        max-width: 100%;
+        height: auto;
+      }
+      @media (max-width: 768px) {
+        .controls {
+          width: 90%;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        select,
+        button {
+          padding: 12px;
+          font-size: 16px; /* Larger touch targets */
+        }
       }
     </style>
   </head>
@@ -84,7 +100,7 @@
       function updateLevelInfo() {
         const info = {
           lineFollower:
-            "Press on start challenge for Line Follower demo on robotics workshop  ",
+            "Press on start challenge for Line Follower demo on robotics workshop ",
           wallAvoider:
             "Press on start challenge for Wall Avoider demo on robotics workshop",
         };
@@ -189,10 +205,23 @@
         ctx.restore();
       }
 
+      function getCanvasSize() {
+        const minSize = Math.min(
+          window.innerWidth - 40,
+          window.innerHeight - 200
+        );
+        return {
+          width: Math.min(800, minSize), // Cap maximum size
+          height: Math.min(600, minSize),
+        };
+      }
+
       function resetChallenge() {
+        const size = getCanvasSize();
+        canvas.width = size.width;
+        canvas.height = size.height;
+        cellSize = Math.min(20, size.width / 40); // Adjust cell size for smaller screens
         robot = { x: 50, y: canvas.height / 2, angle: 0 };
-        canvas.width = window.innerWidth - 100;
-        canvas.height = window.innerHeight - 200;
         completedPoints.clear();
         progress = 0;
         if (animationId) {
@@ -424,7 +453,28 @@
         moveRobot();
       }
 
+      // Add resize handler
+      window.addEventListener("resize", () => {
+        resetChallenge();
+      });
+
       window.onload = () => {
+        // Set initial canvas size
+        const size = getCanvasSize();
+        canvas.width = size.width;
+        canvas.height = size.height;
+
+        // Prevent scroll/zoom on mobile
+        document.body.addEventListener(
+          "touchstart",
+          (e) => {
+            if (e.target === canvas) {
+              e.preventDefault();
+            }
+          },
+          { passive: false }
+        );
+
         resetChallenge();
         updateLevelInfo();
       };
