@@ -9,7 +9,8 @@
         align-items: center;
         background-color: #f0f0f0;
         font-family: Arial, sans-serif;
-        touch-action: none; /* Prevent default touch behaviors */
+        margin: 0;
+        overflow: hidden;
       }
       .controls {
         margin: 20px;
@@ -17,6 +18,35 @@
         background-color: #fff;
         border-radius: 5px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+      }
+      .controls label {
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      .controls select {
+        padding: 5px;
+        border-radius: 5px;
+        margin-right: 10px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+      }
+      .controls button {
+        padding: 10px 15px;
+        margin-right: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .start-btn {
+        background-color: #28a745;
+        color: #fff;
+      }
+      .reset-btn {
+        background-color: #dc3545;
+        color: #fff;
       }
       .level-info {
         background: #333;
@@ -36,21 +66,10 @@
       canvas {
         border: 2px solid #333;
         margin: 20px;
-        max-width: 100%;
-        height: auto;
-      }
-      @media (max-width: 768px) {
-        .controls {
-          width: 90%;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        select,
-        button {
-          padding: 12px;
-          font-size: 16px; /* Larger touch targets */
-        }
+        background-color: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        height: calc(100vh - 200px);
       }
     </style>
   </head>
@@ -61,8 +80,10 @@
         <option value="lineFollower">Level 1: Line Follower</option>
         <option value="wallAvoider">Level 2: Wall Avoider</option>
       </select>
-      <button onclick="startChallenge()">Start Challenge</button>
-      <button onclick="resetRobot()">Reset Robot</button>
+      <button class="start-btn" onclick="startChallenge()">
+        Start Challenge
+      </button>
+      <button class="reset-btn" onclick="resetRobot()">Reset Robot</button>
     </div>
     <div class="level-info" id="levelInfo">Select a challenge to begin!</div>
     <canvas id="gameCanvas"></canvas>
@@ -90,6 +111,7 @@
       let stuckCount = 0;
       let lastPositions = [];
       let forceDirectionChange = false;
+      let scaleFactor = 1;
 
       function changeLevel() {
         currentLevel = document.getElementById("levelSelect").value;
@@ -109,34 +131,12 @@
 
       function generateLineFollowerPath() {
         path = [];
-        const margin = 50;
+        const margin = 50 * scaleFactor;
         const width = canvas.width - 2 * margin;
-        const height = canvas.height - 2 * margin;
+        const y = canvas.height / 2;
 
-        // Create a complete circuit path
-        let x = margin;
-        let y = canvas.height / 2;
-
-        // First curve (left to right)
-        for (let i = 0; i < width; i += 2) {
-          y = canvas.height / 2 + Math.sin(i / 100) * 50;
-          path.push({ x: x + i, y });
-        }
-
-        // Connect to second curve
-        for (let i = 0; i < 50; i += 2) {
-          path.push({ x: x + width - i, y: y + i });
-        }
-
-        // Second curve (right to left)
-        for (let i = width; i > 0; i -= 2) {
-          y = canvas.height / 2 - 100 + Math.cos(i / 80) * 30;
-          path.push({ x: x + i, y });
-        }
-
-        // Complete the circuit
-        for (let i = 0; i < 50; i += 2) {
-          path.push({ x: x + i, y: y - i });
+        for (let x = margin; x <= canvas.width - margin; x += 2 * scaleFactor) {
+          path.push({ x: x, y });
         }
       }
 
@@ -154,10 +154,10 @@
 
         obstaclePatterns.forEach((pattern) => {
           obstacles.push({
-            x: pattern.x,
-            y: pattern.y,
-            width: pattern.w,
-            height: pattern.h,
+            x: pattern.x * scaleFactor,
+            y: pattern.y * scaleFactor,
+            width: pattern.w * scaleFactor,
+            height: pattern.h * scaleFactor,
           });
         });
       }
@@ -192,7 +192,7 @@
         ctx.fillStyle = progressColor;
 
         ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.arc(0, 0, robot.size, 0, Math.PI * 2);
         ctx.fill();
 
         // Add progress indicator
@@ -205,23 +205,23 @@
         ctx.restore();
       }
 
-      function getCanvasSize() {
-        const minSize = Math.min(
-          window.innerWidth - 40,
-          window.innerHeight - 200
-        );
-        return {
-          width: Math.min(800, minSize), // Cap maximum size
-          height: Math.min(600, minSize),
-        };
-      }
-
       function resetChallenge() {
-        const size = getCanvasSize();
-        canvas.width = size.width;
-        canvas.height = size.height;
-        cellSize = Math.min(20, size.width / 40); // Adjust cell size for smaller screens
-        robot = { x: 50, y: canvas.height / 2, angle: 0 };
+        // Set canvas dimensions based on display size
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+
+        // Calculate scale factor relative to a base width (e.g., 800px)
+        scaleFactor = canvas.width / 800;
+
+        robot = {
+          x: 50 * scaleFactor,
+          y: canvas.height / 2,
+          angle: 0,
+          size: 10 * scaleFactor, // Scale robot size
+        };
+
+        autoSpeed = 3 * scaleFactor; // Scale speed
+
         completedPoints.clear();
         progress = 0;
         if (animationId) {
@@ -384,7 +384,7 @@
 
       // Update collision detection to be more precise
       function checkCollision(x, y) {
-        const robotRadius = 12; // Slightly larger than visual size for safety
+        const robotRadius = robot.size + 2; // Slightly larger than visual size for safety
         return obstacles.some((obs) => {
           // Expand obstacle bounds by robot radius
           const expandedObs = {
@@ -453,31 +453,14 @@
         moveRobot();
       }
 
-      // Add resize handler
-      window.addEventListener("resize", () => {
-        resetChallenge();
-      });
-
       window.onload = () => {
-        // Set initial canvas size
-        const size = getCanvasSize();
-        canvas.width = size.width;
-        canvas.height = size.height;
-
-        // Prevent scroll/zoom on mobile
-        document.body.addEventListener(
-          "touchstart",
-          (e) => {
-            if (e.target === canvas) {
-              e.preventDefault();
-            }
-          },
-          { passive: false }
-        );
-
         resetChallenge();
         updateLevelInfo();
       };
+
+      window.addEventListener("resize", () => {
+        resetChallenge();
+      });
     </script>
   </body>
 </html>
