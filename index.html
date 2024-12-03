@@ -90,19 +90,34 @@
           display: none;
         }
       }
+      /* Add styles for level buttons */
+      .level-btn {
+        padding: 10px 15px;
+        margin: 5px 0;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        background-color: #007bff;
+        color: #fff;
+      }
+      /* Modify heading style */
+      h1 {
+        margin-top: 20px;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
+    <!-- Add heading -->
+    <h1>Robotics Workshop Challenge</h1>
     <div class="controls">
-      <label>Challenge: </label>
-      <select id="levelSelect" onchange="changeLevel()">
-        <option value="lineFollower">Level 1: Line Follower</option>
-        <option value="wallAvoider">Level 2: Wall Avoider</option>
-      </select>
-      <button class="start-btn" onclick="startChallenge()">
-        Start Challenge
+      <button class="level-btn" onclick="startChallenge('lineFollower')">
+        Level 1: Line Follower
       </button>
-      <button class="reset-btn" onclick="resetRobot()">Reset Robot</button>
+      <button class="level-btn" onclick="startChallenge('wallAvoider')">
+        Level 2: Wall Avoider
+      </button>
     </div>
     <div class="level-info" id="levelInfo">Select a challenge to begin!</div>
     <canvas id="gameCanvas"></canvas>
@@ -132,20 +147,16 @@
       let forceDirectionChange = false;
       let scaleFactor = 1;
 
-      function changeLevel() {
-        currentLevel = document.getElementById("levelSelect").value;
-        resetChallenge();
-        updateLevelInfo();
-      }
-
       function updateLevelInfo() {
         const info = {
           lineFollower:
-            "Press on start challenge for Line Follower demo on robotics workshop ",
+            "Level 1: Line Follower - For grades 3-7",
           wallAvoider:
-            "Press on start challenge for Wall Avoider demo on robotics workshop",
+            "Level 2: Wall Avoider - For grades 3-7",
+          thirdChallenge:
+            "Level 3: Advanced Challenge - For grades 8-12",
         };
-        document.getElementById("levelInfo").textContent = info[currentLevel];
+        document.getElementById("levelInfo").textContent = info[currentLevel] || "Select a challenge to begin!";
       }
 
       function generateLineFollowerPath() {
@@ -199,28 +210,19 @@
         });
       }
 
+      const carImage = new Image();
+      carImage.src = 'car.png'; // Place car.png in the same directory
       function drawRobot() {
         ctx.save();
         ctx.translate(robot.x, robot.y);
         ctx.rotate(robot.angle);
-
-        // Change robot color based on progress
-        const progressColor = `rgb(${255 - progress * 255}, ${
-          progress * 255
-        }, 0)`;
-        ctx.fillStyle = progressColor;
-
-        ctx.beginPath();
-        ctx.arc(0, 0, robot.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Add progress indicator
-        ctx.fillStyle = "#fff";
-        ctx.font = "10px Arial";
-        ctx.fillText(`${Math.floor(progress * 100)}%`, -10, 4);
-
-        ctx.fillStyle = "#000";
-        ctx.fillRect(5, -2, 5, 4);
+        ctx.drawImage(
+          carImage,
+          -robot.size,
+          -robot.size,
+          robot.size * 2,
+          robot.size * 2
+        );
         ctx.restore();
       }
 
@@ -255,10 +257,13 @@
 
         if (currentLevel === "lineFollower") {
           generateLineFollowerPath();
-        } else {
+          draw();
+        } else if (currentLevel === "wallAvoider") {
           generateWallAvoiderLevel();
+          draw();
+        } else if (currentLevel === "thirdChallenge") {
+          generateThirdChallenge();
         }
-        draw();
       }
 
       function draw() {
@@ -266,10 +271,12 @@
 
         if (currentLevel === "lineFollower") {
           drawLineFollower();
-        } else {
+          drawRobot();
+        } else if (currentLevel === "wallAvoider") {
           drawWallAvoider();
+          drawRobot();
         }
-        drawRobot();
+        // No drawing needed for third challenge here
       }
 
       function moveRobot() {
@@ -426,6 +433,8 @@
         });
       }
 
+      let levelsCompleted = {}; // Track completed levels
+
       function checkSuccess() {
         if (currentLevel === "lineFollower") {
           const currentPoint = path.find(
@@ -449,10 +458,15 @@
             alert(
               "Line Following Challenge Complete! (700% coverage achieved)"
             );
-            currentLevel = "wallAvoider";
-            document.getElementById("levelSelect").value = "wallAvoider";
+            levelsCompleted.lineFollower = true;
+            running = false;
             resetChallenge();
           }
+        } else if (currentLevel === 'wallAvoider' && robot.x > canvas.width - 50) {
+          alert("Wall Avoider Challenge Complete!");
+          levelsCompleted.wallAvoider = true;
+          running = false;
+          resetChallenge();
         } else {
           // Wall avoider progress based on distance traveled
           progress = Math.min(robot.x / (canvas.width - 100), 1);
@@ -462,18 +476,52 @@
             resetChallenge();
           }
         }
+
+        // Unlock third challenge if both levels are completed
+        if (levelsCompleted.lineFollower && levelsCompleted.wallAvoider) {
+          unlockThirdChallenge();
+        }
         draw();
       }
 
-      function startChallenge() {
-        running = true;
-        completedPoints.clear();
-        progress = 0;
-        targetPoint = 0;
-        circuitCount = 0; // Reset circuit count
+      function startChallenge(selectedLevel) {
+        currentLevel = selectedLevel;
+        updateLevelInfo();
         resetChallenge();
-        if (animationId) cancelAnimationFrame(animationId);
-        moveRobot();
+        if (currentLevel !== "thirdChallenge") {
+          running = true;
+          completedPoints.clear();
+          progress = 0;
+          targetPoint = 0;
+          circuitCount = 0; // Reset circuit count
+          if (animationId) cancelAnimationFrame(animationId);
+          moveRobot();
+        } else {
+          running = false; // Stop animation for third challenge
+        }
+      }
+
+      function unlockThirdChallenge() {
+        const controlsDiv = document.querySelector('.controls');
+        // Check if third challenge button already exists
+        if (!document.getElementById('thirdChallengeBtn')) {
+          const thirdButton = document.createElement('button');
+          thirdButton.className = 'level-btn';
+          thirdButton.id = 'thirdChallengeBtn';
+          thirdButton.textContent = 'Level 3: Advanced Challenge';
+          thirdButton.onclick = () => startChallenge('thirdChallenge');
+          controlsDiv.appendChild(thirdButton);
+        }
+      }
+
+      function generateThirdChallenge() {
+        // Display the GIF for grades 8-12
+        const gifUrl = '/ai.gif'; // Replace with actual GIF path
+        const img = new Image();
+        img.src = gifUrl;
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
       }
 
       window.onload = () => {
