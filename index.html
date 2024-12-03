@@ -112,14 +112,18 @@
     <!-- Add heading -->
     <h1>Robotics Workshop Challenge</h1>
     <div class="controls">
-      <button class="level-btn" onclick="startChallenge('lineFollower')">
-        Level 1: Line Follower
+      <!-- Keep level select and start button, remove reset button -->
+      <label>Challenge: </label>
+      <select id="levelSelect" onchange="changeLevel()">
+        <option value="lineFollower">Level 1: Line Follower</option>
+        <option value="wallAvoider">Level 2: Wall Avoider</option>
+      </select>
+      <button class="start-btn" onclick="startChallenge()">
+        Start Challenge
       </button>
-      <button class="level-btn" onclick="startChallenge('wallAvoider')">
-        Level 2: Wall Avoider
-      </button>
+      <!-- Remove the reset button -->
     </div>
-    <div class="level-info" id="levelInfo">Select a challenge to begin!</div>
+    <!-- Remove the level-info div -->
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -146,18 +150,6 @@
       let lastPositions = [];
       let forceDirectionChange = false;
       let scaleFactor = 1;
-
-      function updateLevelInfo() {
-        const info = {
-          lineFollower:
-            "Level 1: Line Follower - For grades 3-7",
-          wallAvoider:
-            "Level 2: Wall Avoider - For grades 3-7",
-          thirdChallenge:
-            "Level 3: Advanced Challenge - For grades 8-12",
-        };
-        document.getElementById("levelInfo").textContent = info[currentLevel] || "Select a challenge to begin!";
-      }
 
       function generateLineFollowerPath() {
         path = [];
@@ -484,21 +476,14 @@
         draw();
       }
 
-      function startChallenge(selectedLevel) {
-        currentLevel = selectedLevel;
-        updateLevelInfo();
-        resetChallenge();
-        if (currentLevel !== "thirdChallenge") {
-          running = true;
-          completedPoints.clear();
-          progress = 0;
-          targetPoint = 0;
-          circuitCount = 0; // Reset circuit count
-          if (animationId) cancelAnimationFrame(animationId);
-          moveRobot();
-        } else {
-          running = false; // Stop animation for third challenge
-        }
+      function startChallenge() {
+        running = true;
+        completedPoints.clear();
+        progress = 0;
+        targetPoint = 0;
+        circuitCount = 0; // Reset circuit count
+        if (animationId) cancelAnimationFrame(animationId);
+        moveRobot();
       }
 
       function unlockThirdChallenge() {
@@ -516,7 +501,7 @@
 
       function generateThirdChallenge() {
         // Display the GIF for grades 8-12
-        const gifUrl = '/ai.gif'; // Replace with actual GIF path
+        const gifUrl = 'path/to/gif.gif'; // Replace with actual GIF path
         const img = new Image();
         img.src = gifUrl;
         img.onload = () => {
@@ -524,9 +509,13 @@
         };
       }
 
+      function changeLevel() {
+        currentLevel = document.getElementById("levelSelect").value;
+        resetChallenge();
+      }
+
       window.onload = () => {
         resetChallenge();
-        updateLevelInfo();
       };
     </script>
   </body>
