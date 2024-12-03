@@ -203,38 +203,59 @@
       }
 
       const carImage = new Image();
-      carImage.src = 'car.png'; // Place car.png in the same directory
+      carImage.src =
+        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,50 L50,20 L90,50 L50,80 Z" fill="red"/></svg>';
+      carImage.onerror = () => {
+        console.log("Fallback to simple car shape");
+      };
+
       function drawRobot() {
         ctx.save();
         ctx.translate(robot.x, robot.y);
         ctx.rotate(robot.angle);
-        ctx.drawImage(
-          carImage,
-          -robot.size,
-          -robot.size,
-          robot.size * 2,
-          robot.size * 2
-        );
+
+        if (carImage.complete && carImage.naturalWidth !== 0) {
+          ctx.drawImage(
+            carImage,
+            -15 * scaleFactor,
+            -15 * scaleFactor,
+            30 * scaleFactor,
+            30 * scaleFactor
+          );
+        } else {
+          ctx.beginPath();
+          ctx.fillStyle = "red";
+          ctx.moveTo(-15 * scaleFactor, 10 * scaleFactor);
+          ctx.lineTo(15 * scaleFactor, 0);
+          ctx.lineTo(-15 * scaleFactor, -10 * scaleFactor);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(15 * scaleFactor, 0);
+        ctx.stroke();
+
         ctx.restore();
       }
 
       function resetChallenge() {
-        // Set canvas size to fill the viewport width
         const containerWidth = window.innerWidth;
-        const containerHeight = window.innerHeight * 0.6; // Use 60% of the viewport height
+        const containerHeight = window.innerHeight * 0.6;
 
         canvas.width = containerWidth;
         canvas.height = containerHeight;
 
-        // Adjust scale factor based on canvas width
-        scaleFactor = canvas.width / 800; // Base width is 800
+        scaleFactor = canvas.width / 800;
 
-        // Initialize robot with scaled values for mobile
         robot = {
           x: 50 * scaleFactor,
           y: canvas.height / 2,
           angle: 0,
-          size: 10 * scaleFactor,
+          size: 15 * scaleFactor,
         };
 
         autoSpeed = 3 * scaleFactor;
@@ -268,7 +289,6 @@
           drawWallAvoider();
           drawRobot();
         }
-        // No drawing needed for third challenge here
       }
 
       function moveRobot() {
@@ -299,16 +319,13 @@
             }
           }
         } else {
-          // Simplified but more reliable wall avoidance
           let moveX = autoSpeed;
           let moveY = 0;
 
-          // Store last 10 positions to detect being stuck
           lastPositions.push({ x: robot.x, y: robot.y });
           if (lastPositions.length > 10) {
             lastPositions.shift();
 
-            // Check if robot is stuck by analyzing movement
             const totalMovement = lastPositions.reduce((acc, pos, i) => {
               if (i === 0) return 0;
               return (
@@ -331,7 +348,6 @@
             }
           }
 
-          // Find nearest obstacle
           let nearestDist = Infinity;
           let avoidanceDirection = 0;
 
@@ -351,9 +367,7 @@
             }
           });
 
-          // Apply movement with improved obstacle avoidance
           if (nearestDist < 100 || forceDirectionChange) {
-            // Strong avoidance when close to obstacles
             moveY =
               autoSpeed *
               (forceDirectionChange ? -avoidanceDirection : avoidanceDirection);
@@ -364,7 +378,6 @@
             }
           }
 
-          // Apply movement with collision checks
           const newX = robot.x + moveX;
           const newY = robot.y + moveY;
 
@@ -372,7 +385,6 @@
             robot.x = newX;
             robot.y = newY;
           } else {
-            // Try alternative movements when blocked
             const alternatives = [
               { x: 0, y: -autoSpeed },
               { x: 0, y: autoSpeed },
@@ -388,10 +400,8 @@
             }
           }
 
-          // Keep robot within canvas bounds
           robot.y = Math.max(20, Math.min(canvas.height - 20, robot.y));
 
-          // Update robot angle
           const targetAngle = Math.atan2(moveY, moveX);
           const angleDiff =
             ((targetAngle - robot.angle + Math.PI * 3) % (Math.PI * 2)) -
@@ -404,11 +414,9 @@
         animationId = requestAnimationFrame(moveRobot);
       }
 
-      // Update collision detection to be more precise
       function checkCollision(x, y) {
-        const robotRadius = robot.size + 2; // Slightly larger than visual size for safety
+        const robotRadius = robot.size + 2;
         return obstacles.some((obs) => {
-          // Expand obstacle bounds by robot radius
           const expandedObs = {
             x: obs.x - robotRadius,
             y: obs.y - robotRadius,
@@ -425,7 +433,7 @@
         });
       }
 
-      let levelsCompleted = {}; // Track completed levels
+      let levelsCompleted = {};
 
       function checkSuccess() {
         if (currentLevel === "lineFollower") {
@@ -442,9 +450,8 @@
             `${Math.floor(currentPoint.x)},${Math.floor(currentPoint.y)}`
           );
 
-          // Update progress calculation for 700%
           progress = completedPoints.size / (path.length / 10) + circuitCount;
-          progress = Math.min(progress, 7); // Cap at 700%
+          progress = Math.min(progress, 7);
 
           if (progress >= 7) {
             alert(
@@ -454,13 +461,15 @@
             running = false;
             resetChallenge();
           }
-        } else if (currentLevel === 'wallAvoider' && robot.x > canvas.width - 50) {
+        } else if (
+          currentLevel === "wallAvoider" &&
+          robot.x > canvas.width - 50
+        ) {
           alert("Wall Avoider Challenge Complete!");
           levelsCompleted.wallAvoider = true;
           running = false;
           resetChallenge();
         } else {
-          // Wall avoider progress based on distance traveled
           progress = Math.min(robot.x / (canvas.width - 100), 1);
 
           if (robot.x > canvas.width - 50) {
@@ -469,7 +478,6 @@
           }
         }
 
-        // Unlock third challenge if both levels are completed
         if (levelsCompleted.lineFollower && levelsCompleted.wallAvoider) {
           unlockThirdChallenge();
         }
@@ -481,27 +489,26 @@
         completedPoints.clear();
         progress = 0;
         targetPoint = 0;
-        circuitCount = 0; // Reset circuit count
+        circuitCount = 0;
+        resetChallenge();
         if (animationId) cancelAnimationFrame(animationId);
         moveRobot();
       }
 
       function unlockThirdChallenge() {
-        const controlsDiv = document.querySelector('.controls');
-        // Check if third challenge button already exists
-        if (!document.getElementById('thirdChallengeBtn')) {
-          const thirdButton = document.createElement('button');
-          thirdButton.className = 'level-btn';
-          thirdButton.id = 'thirdChallengeBtn';
-          thirdButton.textContent = 'Level 3: Advanced Challenge';
-          thirdButton.onclick = () => startChallenge('thirdChallenge');
+        const controlsDiv = document.querySelector(".controls");
+        if (!document.getElementById("thirdChallengeBtn")) {
+          const thirdButton = document.createElement("button");
+          thirdButton.className = "level-btn";
+          thirdButton.id = "thirdChallengeBtn";
+          thirdButton.textContent = "Level 3: Advanced Challenge";
+          thirdButton.onclick = () => startChallenge("thirdChallenge");
           controlsDiv.appendChild(thirdButton);
         }
       }
 
       function generateThirdChallenge() {
-        // Display the GIF for grades 8-12
-        const gifUrl = 'path/to/gif.gif'; // Replace with actual GIF path
+        const gifUrl = "path/to/gif.gif";
         const img = new Image();
         img.src = gifUrl;
         img.onload = () => {
