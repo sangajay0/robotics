@@ -115,9 +115,9 @@
       <!-- Keep level select and start button, remove reset button -->
       <label>Challenge: </label>
       <select id="levelSelect" onchange="changeLevel()">
-        <option value="lineFollower">Level 1: Line Follower</option>
-        <option value="wallAvoider">Level 2: Wall Avoider</option>
-        <option value="aiChallenge">Level 3: AI Challenge</option>
+        <option value="lineFollower">Level 1: Line Follower (Grades 3-7)</option>
+        <option value="wallAvoider">Level 2: Wall Avoider (Grades 3-7)</option>
+        <option value="aiChallenge">Level 3: AI Challenge (Grades 8-12)</option>
       </select>
       <button class="start-btn" onclick="startChallenge()">
         Start Challenge
@@ -483,30 +483,50 @@
       }
 
       function startChallenge() {
+        if (currentLevel === "aiChallenge") {
+          running = false;
+          generateAIChallenge();
+          return;
+        }
+
         running = true;
         completedPoints.clear();
         progress = 0;
         targetPoint = 0;
         circuitCount = 0;
-        
-        if (currentLevel === "aiChallenge") {
-          generateAIChallenge();
-          running = false; // Don't start animation for AI Challenge
-          return;
-        }
-
         resetChallenge();
         if (animationId) cancelAnimationFrame(animationId);
         moveRobot();
       }
 
       function generateAIChallenge() {
-        const gifUrl = "ai.gif"; // Updated to use the correct filename
+        const gifUrl = "ai.gif";
         const img = new Image();
         
         img.onload = () => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Calculate dimensions to maintain aspect ratio
+          const scale = Math.min(
+            canvas.width / img.width,
+            canvas.height / img.height
+          );
+          
+          const width = img.width * scale;
+          const height = img.height * scale;
+          
+          // Center the GIF in canvas
+          const x = (canvas.width - width) / 2;
+          const y = (canvas.height - height) / 2;
+          
+          // Draw GIF
+          ctx.drawImage(img, x, y, width, height);
+          
+          // Force browser to show new frame
+          setTimeout(() => {
+            // Redraw GIF to ensure animation plays
+            ctx.drawImage(img, x, y, width, height);
+          }, 100);
         };
         
         img.onerror = () => {
@@ -516,8 +536,11 @@
           ctx.font = "20px Arial";
           ctx.textAlign = "center";
           ctx.fillText("AI Challenge Loading...", canvas.width/2, canvas.height/2);
+          ctx.fillText("Please ensure ai.gif exists in the same directory", canvas.width/2, canvas.height/2 + 30);
         };
         
+        // Set crossOrigin to anonymous to prevent CORS issues
+        img.crossOrigin = "anonymous";
         img.src = gifUrl;
       }
 
