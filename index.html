@@ -117,6 +117,7 @@
       <select id="levelSelect" onchange="changeLevel()">
         <option value="lineFollower">Level 1: Line Follower</option>
         <option value="wallAvoider">Level 2: Wall Avoider</option>
+        <option value="aiChallenge">Level 3: AI Challenge</option>
       </select>
       <button class="start-btn" onclick="startChallenge()">
         Start Challenge
@@ -274,8 +275,8 @@
         } else if (currentLevel === "wallAvoider") {
           generateWallAvoiderLevel();
           draw();
-        } else if (currentLevel === "thirdChallenge") {
-          generateThirdChallenge();
+        } else if (currentLevel === "aiChallenge") {
+          generateAIChallenge();
         }
       }
 
@@ -478,9 +479,6 @@
           }
         }
 
-        if (levelsCompleted.lineFollower && levelsCompleted.wallAvoider) {
-          unlockThirdChallenge();
-        }
         draw();
       }
 
@@ -490,30 +488,37 @@
         progress = 0;
         targetPoint = 0;
         circuitCount = 0;
+        
+        if (currentLevel === "aiChallenge") {
+          generateAIChallenge();
+          running = false; // Don't start animation for AI Challenge
+          return;
+        }
+
         resetChallenge();
         if (animationId) cancelAnimationFrame(animationId);
         moveRobot();
       }
 
-      function unlockThirdChallenge() {
-        const controlsDiv = document.querySelector(".controls");
-        if (!document.getElementById("thirdChallengeBtn")) {
-          const thirdButton = document.createElement("button");
-          thirdButton.className = "level-btn";
-          thirdButton.id = "thirdChallengeBtn";
-          thirdButton.textContent = "Level 3: Advanced Challenge";
-          thirdButton.onclick = () => startChallenge("thirdChallenge");
-          controlsDiv.appendChild(thirdButton);
-        }
-      }
-
-      function generateThirdChallenge() {
-        const gifUrl = "path/to/gif.gif";
+      function generateAIChallenge() {
+        const gifUrl = "ai.gif"; // Updated to use the correct filename
         const img = new Image();
-        img.src = gifUrl;
+        
         img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         };
+        
+        img.onerror = () => {
+          console.error("Failed to load AI challenge GIF");
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#000";
+          ctx.font = "20px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("AI Challenge Loading...", canvas.width/2, canvas.height/2);
+        };
+        
+        img.src = gifUrl;
       }
 
       function changeLevel() {
